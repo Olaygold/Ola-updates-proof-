@@ -6,167 +6,140 @@
   <style>
     * {
       box-sizing: border-box;
+      user-select: none;
     }
     body {
-      background: #0e0e0e;
-      color: #fefefe;
-      text-align: center;
+      background: #121212;
+      color: #ffffff;
       font-family: 'Segoe UI', sans-serif;
+      text-align: center;
       padding: 20px;
     }
     h2 {
-      color: #f9d342;
-      font-size: 24px;
+      color: #ffcc00;
+      margin-bottom: 10px;
+      font-size: 26px;
     }
-    input, button {
+    input[type="file"], button {
       margin: 8px;
-      padding: 10px 15px;
-      border-radius: 10px;
+      padding: 12px 18px;
+      font-size: 15px;
+      border-radius: 8px;
       border: none;
-      font-size: 16px;
+      outline: none;
+    }
+    input[type="file"] {
+      background-color: #333;
+      color: #fefefe;
     }
     button {
-      background: #f9d342;
+      background-color: #ffcc00;
       color: #000;
       font-weight: bold;
       cursor: pointer;
-      box-shadow: 0 2px 8px rgba(249, 211, 66, 0.3);
+      transition: 0.2s ease-in-out;
+    }
+    button:hover {
+      background-color: #ffda3a;
     }
     #canvasContainer {
+      margin: 20px auto;
       position: relative;
-      display: inline-block;
-      margin-top: 20px;
-      border: 3px dashed #f9d342;
+      border: 2px dashed #ffcc00;
       border-radius: 12px;
-      padding: 5px;
+      display: none;
+      padding: 8px;
       overflow: hidden;
     }
     canvas {
-      display: block;
       max-width: 100%;
+      border-radius: 8px;
     }
     .draggable {
       position: absolute;
       cursor: move;
-      resize: both;
-      overflow: hidden;
       z-index: 10;
-      touch-action: none;
-    }
-    #watermark {
-      font-size: 18px;
-      background: rgba(255, 255, 255, 0.8);
-      color: #000;
-      padding: 6px 12px;
+      padding: 6px 10px;
+      background-color: rgba(255,255,255,0.8);
       border-radius: 8px;
       font-weight: bold;
-      box-shadow: 0 2px 4px rgba(255, 255, 255, 0.2);
+      color: #000;
     }
     #signature {
       width: 80px;
       height: 80px;
-      transform-origin: center center;
-      border-radius: 8px;
+      touch-action: none;
+      border-radius: 6px;
+    }
+    #footerNote {
+      margin-top: 25px;
+      font-size: 14px;
+      color: #aaa;
     }
   </style>
 </head>
 <body>
-
-  <h2>OLA’S Update — Drag ✋ Zoom 🔎 Download ✅</h2>
-
+  <h2>OLA’S Update – Image Proof Maker ✅</h2>
   <input type="file" id="leftImg" accept="image/*">
-  <input type="file" id="rightImg" accept="image/*">
-  <br>
-  <button onclick="generateCanvas()">Generate Layout</button>
-  <button onclick="downloadImage()">Download Final Image</button>
+  <input type="file" id="rightImg" accept="image/*"><br>
+  <button onclick="generateCanvas()">🧩 Generate Layout</button>
+  <button onclick="downloadImage()">⬇️ Download Final Image</button>
 
-  <div id="canvasContainer" style="display:none;">
+  <div id="canvasContainer">
     <canvas id="finalCanvas"></canvas>
     <div id="watermark" class="draggable">Verified by OLA’S Update ✅</div>
     <img id="signature" class="draggable" src="sign.png" />
   </div>
 
+  <p id="footerNote">Double-tap or pinch to zoom the signature. Drag watermark/signature to position them.</p>
+
   <script>
     let leftImage, rightImage;
 
     function makeDraggable(el) {
-      let isDown = false, offsetX = 0, offsetY = 0;
+      let isDragging = false, offsetX = 0, offsetY = 0;
 
-      function moveElement(e) {
-        if (!isDown) return;
-        let clientX = e.clientX || e.touches?.[0]?.clientX;
-        let clientY = e.clientY || e.touches?.[0]?.clientY;
-        const parentRect = el.parentElement.getBoundingClientRect();
-        const newX = clientX - parentRect.left - offsetX;
-        const newY = clientY - parentRect.top - offsetY;
-        el.style.left = `${newX}px`;
-        el.style.top = `${newY}px`;
-      }
+      const move = (e) => {
+        if (!isDragging) return;
+        const x = (e.clientX || e.touches?.[0]?.clientX) - offsetX;
+        const y = (e.clientY || e.touches?.[0]?.clientY) - offsetY;
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+      };
 
-      function stopDrag() {
-        isDown = false;
-        document.removeEventListener("mousemove", moveElement);
-        document.removeEventListener("mouseup", stopDrag);
-        document.removeEventListener("touchmove", moveElement);
-        document.removeEventListener("touchend", stopDrag);
-      }
+      const stop = () => {
+        isDragging = false;
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("mouseup", stop);
+        document.removeEventListener("touchmove", move);
+        document.removeEventListener("touchend", stop);
+      };
 
-      el.addEventListener("mousedown", function (e) {
-        isDown = true;
+      el.addEventListener("mousedown", (e) => {
+        isDragging = true;
         offsetX = e.offsetX;
         offsetY = e.offsetY;
-        document.addEventListener("mousemove", moveElement);
-        document.addEventListener("mouseup", stopDrag);
+        document.addEventListener("mousemove", move);
+        document.addEventListener("mouseup", stop);
       });
 
-      el.addEventListener("touchstart", function (e) {
-        isDown = true;
-        offsetX = e.touches[0].clientX - el.getBoundingClientRect().left;
-        offsetY = e.touches[0].clientY - el.getBoundingClientRect().top;
-        document.addEventListener("touchmove", moveElement, { passive: false });
-        document.addEventListener("touchend", stopDrag);
+      el.addEventListener("touchstart", (e) => {
+        isDragging = true;
+        const rect = el.getBoundingClientRect();
+        offsetX = e.touches[0].clientX - rect.left;
+        offsetY = e.touches[0].clientY - rect.top;
+        document.addEventListener("touchmove", move, { passive: false });
+        document.addEventListener("touchend", stop);
       });
     }
 
     makeDraggable(document.getElementById("watermark"));
     makeDraggable(document.getElementById("signature"));
 
-    async function generateCanvas() {
-      const leftFile = document.getElementById("leftImg").files[0];
-      const rightFile = document.getElementById("rightImg").files[0];
-      if (!leftFile || !rightFile) return alert("Please upload both images.");
-
-      const leftImg = await loadImage(leftFile);
-      const rightImg = await loadImage(rightFile);
-
-      leftImage = leftImg;
-      rightImage = rightImg;
-
-      const canvas = document.getElementById("finalCanvas");
-      const ctx = canvas.getContext("2d");
-
-      const width = leftImg.width + rightImg.width;
-      const height = Math.max(leftImg.height, rightImg.height);
-
-      canvas.width = width;
-      canvas.height = height;
-
-      ctx.drawImage(leftImg, 0, 0);
-      ctx.drawImage(rightImg, leftImg.width, 0);
-
-      const container = document.getElementById("canvasContainer");
-      container.style.display = "inline-block";
-
-      document.getElementById("watermark").style.top = (height - 60) + "px";
-      document.getElementById("watermark").style.left = "20px";
-      document.getElementById("signature").style.top = "20px";
-      document.getElementById("signature").style.left = (width - 100) + "px";
-    }
-
     function loadImage(file) {
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = e => {
+        reader.onload = (e) => {
           const img = new Image();
           img.onload = () => resolve(img);
           img.src = e.target.result;
@@ -176,54 +149,76 @@
       });
     }
 
-    // ✅ Pinch-to-zoom + double-tap for signature
+    async function generateCanvas() {
+      const leftFile = document.getElementById("leftImg").files[0];
+      const rightFile = document.getElementById("rightImg").files[0];
+      if (!leftFile || !rightFile) return alert("📸 Please select both images.");
+
+      leftImage = await loadImage(leftFile);
+      rightImage = await loadImage(rightFile);
+
+      const canvas = document.getElementById("finalCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const width = leftImage.width + rightImage.width;
+      const height = Math.max(leftImage.height, rightImage.height);
+      canvas.width = width;
+      canvas.height = height;
+
+      ctx.drawImage(leftImage, 0, 0);
+      ctx.drawImage(rightImage, leftImage.width, 0);
+
+      const container = document.getElementById("canvasContainer");
+      container.style.display = "inline-block";
+
+      // Default watermark/signature positions
+      document.getElementById("watermark").style.top = (height - 40) + "px";
+      document.getElementById("watermark").style.left = "20px";
+
+      document.getElementById("signature").style.top = "20px";
+      document.getElementById("signature").style.left = (width - 100) + "px";
+      document.getElementById("signature").style.transform = "scale(1)";
+    }
+
+    // Zoom and double-tap zoom
     (function enablePinchZoom() {
       const sig = document.getElementById("signature");
-      let initialDistance = null;
-      let currentScale = 1;
-      let baseScale = 1;
+      let scale = 1, initialDist = null, baseScale = 1;
       let lastTap = 0;
 
-      function getDistance(touch1, touch2) {
-        const dx = touch2.clientX - touch1.clientX;
-        const dy = touch2.clientY - touch1.clientY;
+      function distance(t1, t2) {
+        const dx = t1.clientX - t2.clientX;
+        const dy = t1.clientY - t2.clientY;
         return Math.sqrt(dx * dx + dy * dy);
       }
 
-      sig.addEventListener("touchstart", function (e) {
+      sig.addEventListener("touchstart", (e) => {
         if (e.touches.length === 2) {
           e.preventDefault();
-          initialDistance = getDistance(e.touches[0], e.touches[1]);
-        }
-
-        if (e.touches.length === 1) {
-          const now = new Date().getTime();
-          const delta = now - lastTap;
-          if (delta > 0 && delta < 300) {
-            // Double tap toggle zoom
-            currentScale = currentScale === 1 ? 2 : 1;
-            baseScale = currentScale;
-            sig.style.transform = `scale(${currentScale})`;
+          initialDist = distance(e.touches[0], e.touches[1]);
+        } else if (e.touches.length === 1) {
+          const now = Date.now();
+          if (now - lastTap < 300) {
+            scale = scale === 1 ? 2 : 1;
+            baseScale = scale;
+            sig.style.transform = `scale(${scale})`;
           }
           lastTap = now;
         }
       }, { passive: false });
 
-      sig.addEventListener("touchmove", function (e) {
-        if (e.touches.length === 2 && initialDistance !== null) {
+      sig.addEventListener("touchmove", (e) => {
+        if (e.touches.length === 2 && initialDist !== null) {
           e.preventDefault();
-          const currentDistance = getDistance(e.touches[0], e.touches[1]);
-          const zoomFactor = currentDistance / initialDistance;
-          currentScale = baseScale * zoomFactor;
-          sig.style.transform = `scale(${currentScale})`;
+          const currentDist = distance(e.touches[0], e.touches[1]);
+          scale = baseScale * (currentDist / initialDist);
+          sig.style.transform = `scale(${scale})`;
         }
       }, { passive: false });
 
-      sig.addEventListener("touchend", function (e) {
-        if (e.touches.length < 2 && initialDistance !== null) {
-          baseScale = currentScale;
-          initialDistance = null;
-        }
+      sig.addEventListener("touchend", () => {
+        baseScale = scale;
+        initialDist = null;
       });
     })();
 
@@ -237,31 +232,31 @@
 
       const container = document.getElementById("canvasContainer");
 
-      const drawElement = (el, drawFn) => {
+      function drawElement(el, drawCallback) {
         const rect = el.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
         const x = rect.left - containerRect.left;
         const y = rect.top - containerRect.top;
-        drawFn(x, y, el.offsetWidth, el.offsetHeight);
-      };
+        drawCallback(x, y, el.offsetWidth, el.offsetHeight);
+      }
 
       drawElement(document.getElementById("watermark"), (x, y) => {
         ctx.font = "20px Arial";
-        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
         ctx.fillText("Verified by OLA’S Update ✅", x, y + 20);
       });
 
       const sig = document.getElementById("signature");
-      const scaleMatch = sig.style.transform.match(/scale([\d.]+)/);
-      const scale = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
+      const match = sig.style.transform.match(/scale([\d.]+)/);
+      const scale = match ? parseFloat(match[1]) : 1;
 
       drawElement(sig, (x, y, w, h) => {
         ctx.drawImage(sig, x, y, w * scale, h * scale);
       });
 
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.download = "OLA-proof.png";
-      link.href = canvas.toDataURL();
+      link.href = canvas.toDataURL("image/png");
       link.click();
     }
   </script>
