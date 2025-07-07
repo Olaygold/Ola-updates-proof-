@@ -70,6 +70,7 @@
       height: 80px;
       touch-action: none;
       border-radius: 6px;
+      transform-origin: center center;
     }
     #footerNote {
       margin-top: 25px;
@@ -150,115 +151,4 @@
     }
 
     async function generateCanvas() {
-      const leftFile = document.getElementById("leftImg").files[0];
-      const rightFile = document.getElementById("rightImg").files[0];
-      if (!leftFile || !rightFile) return alert("📸 Please select both images.");
-
-      leftImage = await loadImage(leftFile);
-      rightImage = await loadImage(rightFile);
-
-      const canvas = document.getElementById("finalCanvas");
-      const ctx = canvas.getContext("2d");
-
-      const width = leftImage.width + rightImage.width;
-      const height = Math.max(leftImage.height, rightImage.height);
-      canvas.width = width;
-      canvas.height = height;
-
-      ctx.drawImage(leftImage, 0, 0);
-      ctx.drawImage(rightImage, leftImage.width, 0);
-
-      const container = document.getElementById("canvasContainer");
-      container.style.display = "inline-block";
-
-      // Default watermark/signature positions
-      document.getElementById("watermark").style.top = (height - 40) + "px";
-      document.getElementById("watermark").style.left = "20px";
-
-      document.getElementById("signature").style.top = "20px";
-      document.getElementById("signature").style.left = (width - 100) + "px";
-      document.getElementById("signature").style.transform = "scale(1)";
-    }
-
-    // Zoom and double-tap zoom
-    (function enablePinchZoom() {
-      const sig = document.getElementById("signature");
-      let scale = 1, initialDist = null, baseScale = 1;
-      let lastTap = 0;
-
-      function distance(t1, t2) {
-        const dx = t1.clientX - t2.clientX;
-        const dy = t1.clientY - t2.clientY;
-        return Math.sqrt(dx * dx + dy * dy);
-      }
-
-      sig.addEventListener("touchstart", (e) => {
-        if (e.touches.length === 2) {
-          e.preventDefault();
-          initialDist = distance(e.touches[0], e.touches[1]);
-        } else if (e.touches.length === 1) {
-          const now = Date.now();
-          if (now - lastTap < 300) {
-            scale = scale === 1 ? 2 : 1;
-            baseScale = scale;
-            sig.style.transform = `scale(${scale})`;
-          }
-          lastTap = now;
-        }
-      }, { passive: false });
-
-      sig.addEventListener("touchmove", (e) => {
-        if (e.touches.length === 2 && initialDist !== null) {
-          e.preventDefault();
-          const currentDist = distance(e.touches[0], e.touches[1]);
-          scale = baseScale * (currentDist / initialDist);
-          sig.style.transform = `scale(${scale})`;
-        }
-      }, { passive: false });
-
-      sig.addEventListener("touchend", () => {
-        baseScale = scale;
-        initialDist = null;
-      });
-    })();
-
-    function downloadImage() {
-      const canvas = document.getElementById("finalCanvas");
-      const ctx = canvas.getContext("2d");
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.drawImage(leftImage, 0, 0);
-      ctx.drawImage(rightImage, leftImage.width, 0);
-
-      const container = document.getElementById("canvasContainer");
-
-      function drawElement(el, drawCallback) {
-        const rect = el.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-        const x = rect.left - containerRect.left;
-        const y = rect.top - containerRect.top;
-        drawCallback(x, y, el.offsetWidth, el.offsetHeight);
-      }
-
-      drawElement(document.getElementById("watermark"), (x, y) => {
-        ctx.font = "20px Arial";
-        ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
-        ctx.fillText("Verified by OLA’S Update ✅", x, y + 20);
-      });
-
-      const sig = document.getElementById("signature");
-      const match = sig.style.transform.match(/scale([\d.]+)/);
-      const scale = match ? parseFloat(match[1]) : 1;
-
-      drawElement(sig, (x, y, w, h) => {
-        ctx.drawImage(sig, x, y, w * scale, h * scale);
-      });
-
-      const link = document.createElement("a");
-      link.download = "OLA-proof.png";
-      link.href = canvas.toDataURL("image/png");
-      link.click();
-    }
-  </script>
-</body>
-</html>
+      const leftFile = document.getElementBy
