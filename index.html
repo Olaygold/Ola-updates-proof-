@@ -2,35 +2,48 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>OLA’S Update – Proof Generator</title>
+  <title>🖼️ OLA’S Update – Proof Generator</title>
   <style>
+    * {
+      box-sizing: border-box;
+    }
     body {
-      background: #121212;
-      color: #fff;
+      background: #0e0e0e;
+      color: #fefefe;
       text-align: center;
       font-family: 'Segoe UI', sans-serif;
       padding: 20px;
     }
+    h2 {
+      color: #f9d342;
+      font-size: 24px;
+    }
     input, button {
       margin: 8px;
-      padding: 8px;
-      border-radius: 8px;
+      padding: 10px 15px;
+      border-radius: 10px;
       border: none;
+      font-size: 16px;
     }
     button {
       background: #f9d342;
       color: #000;
       font-weight: bold;
       cursor: pointer;
+      box-shadow: 0 2px 8px rgba(249, 211, 66, 0.3);
     }
     #canvasContainer {
       position: relative;
       display: inline-block;
       margin-top: 20px;
-      border: 2px solid #f9d342;
+      border: 3px dashed #f9d342;
+      border-radius: 12px;
+      padding: 5px;
+      overflow: hidden;
     }
     canvas {
       display: block;
+      max-width: 100%;
     }
     .draggable {
       position: absolute;
@@ -38,29 +51,29 @@
       resize: both;
       overflow: hidden;
       z-index: 10;
+      touch-action: none;
     }
     #watermark {
-      font-size: 20px;
-      background: rgba(255, 255, 255, 0.7);
+      font-size: 18px;
+      background: rgba(255, 255, 255, 0.8);
       color: #000;
-      padding: 5px 10px;
-      border-radius: 6px;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(255, 255, 255, 0.2);
     }
     #signature {
       width: 80px;
       height: 80px;
+      transform-origin: center center;
+      border-radius: 8px;
     }
-    #signature {
-  width: 80px;
-  height: 80px;
-  touch-action: none; /* Prevent default pinch scroll */
-  transform-origin: center center;
-}
   </style>
 </head>
 <body>
 
-  <h2>🖼️ OLA’S Update — Drag, Drop & Download Proof</h2>
+  <h2>OLA’S Update — Drag ✋ Zoom 🔎 Download ✅</h2>
+
   <input type="file" id="leftImg" accept="image/*">
   <input type="file" id="rightImg" accept="image/*">
   <br>
@@ -83,11 +96,9 @@
         if (!isDown) return;
         let clientX = e.clientX || e.touches?.[0]?.clientX;
         let clientY = e.clientY || e.touches?.[0]?.clientY;
-
         const parentRect = el.parentElement.getBoundingClientRect();
         const newX = clientX - parentRect.left - offsetX;
         const newY = clientY - parentRect.top - offsetY;
-
         el.style.left = `${newX}px`;
         el.style.top = `${newY}px`;
       }
@@ -165,45 +176,56 @@
       });
     }
 
+    // ✅ Pinch-to-zoom + double-tap for signature
+    (function enablePinchZoom() {
+      const sig = document.getElementById("signature");
+      let initialDistance = null;
+      let currentScale = 1;
+      let baseScale = 1;
+      let lastTap = 0;
 
-// Pinch-to-zoom support for signature image
-(function enablePinchZoom() {
-  const sig = document.getElementById("signature");
-  let initialDistance = null;
-  let scale = 1;
+      function getDistance(touch1, touch2) {
+        const dx = touch2.clientX - touch1.clientX;
+        const dy = touch2.clientY - touch1.clientY;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
 
-  sig.addEventListener("touchstart", function (e) {
-    if (e.touches.length === 2) {
-      initialDistance = getDistance(e.touches[0], e.touches[1]);
-    }
-  });
+      sig.addEventListener("touchstart", function (e) {
+        if (e.touches.length === 2) {
+          e.preventDefault();
+          initialDistance = getDistance(e.touches[0], e.touches[1]);
+        }
 
-  sig.addEventListener("touchmove", function (e) {
-    if (e.touches.length === 2 && initialDistance !== null) {
-      e.preventDefault();
-      const currentDistance = getDistance(e.touches[0], e.touches[1]);
-      const zoomFactor = currentDistance / initialDistance;
-      const newScale = scale * zoomFactor;
-      sig.style.transform = `scale(${newScale})`;
-    }
-  });
+        if (e.touches.length === 1) {
+          const now = new Date().getTime();
+          const delta = now - lastTap;
+          if (delta > 0 && delta < 300) {
+            // Double tap toggle zoom
+            currentScale = currentScale === 1 ? 2 : 1;
+            baseScale = currentScale;
+            sig.style.transform = `scale(${currentScale})`;
+          }
+          lastTap = now;
+        }
+      }, { passive: false });
 
-  sig.addEventListener("touchend", function (e) {
-    if (e.touches.length < 2 && initialDistance !== null) {
-      const transform = sig.style.transform;
-      const match = transform.match(/scale([\d.]+)/);
-      if (match) scale = parseFloat(match[1]);
-      initialDistance = null;
-    }
-  });
+      sig.addEventListener("touchmove", function (e) {
+        if (e.touches.length === 2 && initialDistance !== null) {
+          e.preventDefault();
+          const currentDistance = getDistance(e.touches[0], e.touches[1]);
+          const zoomFactor = currentDistance / initialDistance;
+          currentScale = baseScale * zoomFactor;
+          sig.style.transform = `scale(${currentScale})`;
+        }
+      }, { passive: false });
 
-  function getDistance(touch1, touch2) {
-    const dx = touch2.clientX - touch1.clientX;
-    const dy = touch2.clientY - touch1.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-})();
-
+      sig.addEventListener("touchend", function (e) {
+        if (e.touches.length < 2 && initialDistance !== null) {
+          baseScale = currentScale;
+          initialDistance = null;
+        }
+      });
+    })();
 
     function downloadImage() {
       const canvas = document.getElementById("finalCanvas");
@@ -230,8 +252,11 @@
       });
 
       const sig = document.getElementById("signature");
+      const scaleMatch = sig.style.transform.match(/scale([\d.]+)/);
+      const scale = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
+
       drawElement(sig, (x, y, w, h) => {
-        ctx.drawImage(sig, x, y, w, h);
+        ctx.drawImage(sig, x, y, w * scale, h * scale);
       });
 
       const link = document.createElement('a');
