@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>OLA’S Update – Proof Generator</title>
+  <style>
+    body {
+      background: #121212;
+      color: #fff;
+      text-align: center;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 20px;
+    }
+    input, button {
+      margin: 8px;
+      padding: 8px;
+      border-radius: 8px;
+      border: none;
+    }
+    button {
+      background: #f9d342;
+      color: #000;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #canvasContainer {
+      position: relative;
+      display: inline-block;
+      margin-top: 20px;
+      border: 2px solid #f9d342;
+    }
+    canvas {
+      display: block;
+    }
+    .draggable {
+      position: absolute;
+      cursor: move;
+      resize: both;
+      overflow: hidden;
+      z-index: 10;
+    }
+    #watermark {
+      font-size: 20px;
+      background: rgba(255, 255, 255, 0.7);
+      color: #000;
+      padding: 5px 10px;
+      border-radius: 6px;
+    }
+    #signature {
+      width: 80px;
+      height: 80px;
+    }
+    #signature {
+  width: 80px;
+  height: 80px;
+  touch-action: none; /* Prevent default pinch scroll */
+  transform-origin: center center;
+}
+  </style>
+</head>
+<body>
+
+  <h2>🖼️ OLA’S Update — Drag, Drop & Download Proof</h2>
+  <input type="file" id="leftImg" accept="image/*">
+  <input type="file" id="rightImg" accept="image/*">
+  <br>
+  <button onclick="generateCanvas()">Generate Layout</button>
+  <button onclick="downloadImage()">Download Final Image</button>
+
+  <div id="canvasContainer" style="display:none;">
+    <canvas id="finalCanvas"></canvas>
+    <div id="watermark" class="draggable">Verified by OLA’S Update ✅</div>
+    <img id="signature" class="draggable" src="sign.png" />
+  </div>
+
+  <script>
+    let leftImage, rightImage;
+
+    function makeDraggable(el) {
+      let isDown = false, offsetX = 0, offsetY = 0;
+
+      function moveElement(e) {
+        if (!isDown) return;
+        let clientX = e.clientX || e.touches?.[0]?.clientX;
+        let clientY = e.clientY || e.touches?.[0]?.clientY;
+
+        const parentRect = el.parentElement.getBoundingClientRect();
+        const newX = clientX - parentRect.left - offsetX;
+        const newY = clientY - parentRect.top - offsetY;
+
+        el.style.left = `${newX}px`;
+        el.style.top = `${newY}px`;
+      }
+
+      function stopDrag() {
+        isDown = false;
+        document.removeEventListener("mousemove", moveElement);
+        document.removeEventListener("mouseup", stopDrag);
+        document.removeEventListener("touchmove", moveElement);
+        document.removeEventListener("touchend", stopDrag);
+      }
+
+      el.addEventListener("mousedown", function (e) {
+        isDown = true;
+        offsetX = e.offsetX;
+        offsetY = e.offsetY;
+        document.addEventListener("mousemove", moveElement);
+        document.addEventListener("mouseup", stopDrag);
+      });
+
+      el.addEventListener("touchstart", function (e) {
+        isDown = true;
+        offsetX = e.touches[0].clientX - el.getBoundingClientRect().left;
+        offsetY = e.touches[0].clientY - el.getBoundingClientRect().top;
+        document.addEventListener("touchmove", moveElement, { passive: false });
+        document.addEventListener("touchend", stopDrag);
+      });
+    }
+
+    makeDraggable(document.getElementById("watermark"));
+    makeDraggable(document.getElementById("signature"));
+
+    async function generateCanvas() {
+      const leftFile = document.getElementById("leftImg").files[0];
+      const rightFile = document.getElementById("rightImg").files[0];
+      if (!leftFile || !rightFile) return alert("Please upload both images.");
+
+      const leftImg = await loadImage(leftFile);
+      const rightImg = await loadImage(rightFile);
+
+      leftImage = leftImg;
+      rightImage = rightImg;
+
+      const canvas = document.getElementById("finalCanvas");
+      const ctx = canvas.getContext("2d");
+
+      const width = leftImg.width + rightImg.width;
+      const height = Math.max(leftImg.height, rightImg.height);
+
+      canvas.width = width;
+      canvas.height = height;
+
+      ctx.drawImage(leftImg, 0, 0);
+      ctx.drawImage(rightImg, leftImg.width, 0);
+
+      const container = document.getElementById("canvasContainer");
+      container.style.display = "inline-block";
+
+      document.getElementById("watermark").style.top = (height - 60) + "px";
+      document.getElementById("watermark").style.left = "20px";
+      document.getElementById("signature").style.top = "20px";
+      document.getElementById("signature").style.left = (width - 100) + "px";
+    }
+
+    function loadImage(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+
+// Pinch-to-zoom support for signature image
+(function enablePinchZoom() {
+  const sig = document.getElementById("signature");
+  let initialDistance = null;
+  let scale = 1;
+
+  sig.addEventListener("touchstart", function (e) {
+    if (e.touches.length === 2) {
+      initialDistance = getDistance(e.touches[0], e.touches[1]);
+    }
+  });
+
+  sig.addEventListener("touchmove", function (e) {
+    if (e.touches.length === 2 && initialDistance !== null) {
+      e.preventDefault();
+      const currentDistance = getDistance(e.touches[0], e.touches[1]);
+      const zoomFactor = currentDistance / initialDistance;
+      const newScale = scale * zoomFactor;
+      sig.style.transform = `scale(${newScale})`;
+    }
+  });
+
+  sig.addEventListener("touchend", function (e) {
+    if (e.touches.length < 2 && initialDistance !== null) {
+      const transform = sig.style.transform;
+      const match = transform.match(/scale([\d.]+)/);
+      if (match) scale = parseFloat(match[1]);
+      initialDistance = null;
+    }
+  });
+
+  function getDistance(touch1, touch2) {
+    const dx = touch2.clientX - touch1.clientX;
+    const dy = touch2.clientY - touch1.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+})();
+
+
+    function downloadImage() {
+      const canvas = document.getElementById("finalCanvas");
+      const ctx = canvas.getContext("2d");
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(leftImage, 0, 0);
+      ctx.drawImage(rightImage, leftImage.width, 0);
+
+      const container = document.getElementById("canvasContainer");
+
+      const drawElement = (el, drawFn) => {
+        const rect = el.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const x = rect.left - containerRect.left;
+        const y = rect.top - containerRect.top;
+        drawFn(x, y, el.offsetWidth, el.offsetHeight);
+      };
+
+      drawElement(document.getElementById("watermark"), (x, y) => {
+        ctx.font = "20px Arial";
+        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.fillText("Verified by OLA’S Update ✅", x, y + 20);
+      });
+
+      const sig = document.getElementById("signature");
+      drawElement(sig, (x, y, w, h) => {
+        ctx.drawImage(sig, x, y, w, h);
+      });
+
+      const link = document.createElement('a');
+      link.download = "OLA-proof.png";
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+  </script>
+</body>
+</html>
